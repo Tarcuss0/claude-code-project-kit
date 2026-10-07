@@ -1,0 +1,52 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pytest
+        run: pip install pytest
+      - name: Shell script lint
+        run: shellcheck -S warning scripts/db-backup.sh
+      - name: Tests
+        run: python -m pytest -q
+      - name: PowerShell library tests
+        shell: pwsh
+        run: ./tests/lib-backup.tests.ps1
+      - name: Secrets scan of this repository
+        run: python scripts/check_secrets.py
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PowerShell syntax and BOM check
+        shell: pwsh
+        run: |
+          $failed = $false
+          foreach ($f in Get-ChildItem scripts -Filter *.ps1) {
+            $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$null, [ref]$errors)
+            if ($errors.Count -gt 0) {
+              Write-Host "syntax errors in $($f.Name):"
+              $errors | ForEach-Object { Write-Host "  $($_.Message) (line $($_.Extent.StartLineNumber))" }
+              $failed = $true
+            }
+            $bytes = [System.IO.File]::ReadAllBytes($f.FullName)
+            if (-not ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF)) {
+              Write-Host "$($f.Name): no UTF-8 BOM"
+              $failed = $true
+            }
+          }
+          if ($failed) { exit 1 }
+      - name: PowerShell library tests
+        shell: pwsh
+        run: ./tests/lib-backup.tests.ps1

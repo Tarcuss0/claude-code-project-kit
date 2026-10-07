@@ -1,0 +1,48 @@
+# Секреты и окружение
+.env
+.env.*
+!.env.example
+*.session
+*.session-journal
+*.pem
+*.key
+id_rsa*
+settings.local.json
+
+# Данные и выгрузки
+state.json
+*.csv
+*.dump
+*.sql.gz
+*.bundle
+data/
+exports/
+uploads/
+audio/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+dist/
+
+# Инструменты и ОС
+.idea/
+.vscode/
+*.bak
+*.log
+Thumbs.db
+.DS_Store
+
+# Старые исходники только для чтения
+_old/
+
+# Настройки проекта (секреты и адреса сервера)
+scripts/project.conf

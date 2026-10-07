@@ -1,0 +1,43 @@
+# Copy to scripts/project.conf and fill in. project.conf is not committed (see .gitignore).
+# Plain KEY=VALUE lines: read by db-backup.sh (server) and by the PowerShell scripts (PC).
+# Скопируй в scripts/project.conf и заполни. Файл project.conf в git не попадает.
+
+# Читаемое имя проекта латиницей. Из него строится папка <LOCAL_BACKUP_ROOT>\<слаг>\
+PROJECT_SLUG=my-project
+
+# --- Сервер ---
+SERVER_HOST=203.0.113.10
+SERVER_USER=root
+SERVER_APP_DIR=/opt/my-project
+SERVER_ENV_FILE=/opt/my-project/.env
+SERVER_BACKUP_DIR=/srv/my-project/backup
+SERVER_STATE_DIR=/srv/my-project/state
+
+# --- Бэкап базы (сервер) ---
+# Схемы через запятую, если база общая. Пусто = вся база.
+DB_SCHEMAS=
+KEEP_DAILY=7
+KEEP_WEEKLY=4
+# Снимок старше стольких часов на сервере считается просроченным: забор на ПК вернёт код 2
+STALE_HOURS=26
+# Образ postgres должен быть не старше сервера БД
+PG_IMAGE=postgres:16
+PG_MAX_MAJOR=16
+
+# --- Бэкап на ПК ---
+LOCAL_BACKUP_ROOT=C:\project_backups
+# Сколько дней держать снимки на ПК, но не меньше KEEP_AT_LEAST штук (пол сильнее срока)
+KEEP_DAYS=30
+KEEP_AT_LEAST=3
+# Папки репозиториев через ;
+LOCAL_REPOS=C:\work\my-project
+KEEP_BUNDLES=14
+
+# --- Деплой ---
+SERVICE_NAME=my-project
+HEALTHZ_URL=http://127.0.0.1:8000/healthz
+# Команды выполняются на сервере в SERVER_APP_DIR. Пусто = шаг пропускается.
+MIGRATE_CMD=docker compose exec -T app alembic upgrade head
+VERSION_CMD=docker compose exec -T app alembic current
+# Команда полного прогона тестов на ПК. Запускается только с ключом -WithTests.
+TEST_CMD=pytest -q

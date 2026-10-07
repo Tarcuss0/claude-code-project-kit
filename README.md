@@ -1,44 +1,216 @@
 # claude-code-project-kit
 
-A starter kit for projects built with several parallel Claude Code sessions. It holds the working rules I carry from project to project: how sessions split a codebase, how state is handed over, how tests stay fast, how backups are made and verified, and how deploys are done by hand.
+[English summary](README.en.md)
 
-Full instructions and the methodology are in Russian: [README.ru.md](README.ru.md) and [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
+Набор для проектов, которые ведутся несколькими параллельными сессиями Claude Code. Здесь всё, что переносится из проекта в проект: правила для Claude Code, шаблоны, бэкапы, деплой. Открыл, прошёл по шагам, проект стартовал с нормальной базой.
 
-## The ideas
+Подробные объяснения, почему так: `docs/METHODOLOGY.md`.
 
-- **Sessions own zones.** 3–4 sessions, each with its own directories, tests and test-database suffix. One session owns the core; the others use only its public interface, and a boundary test enforces it.
-- **State lives in files.** Each session keeps a `HANDOVER-X.md` in the repo, so work survives context compaction and lost sessions. See [examples/](examples/).
-- **Diagnose first, code second.** Sessions explain the plan and wait for approval before writing code. Every report ends with what was not verified.
-- **Sessions test only what they changed.** The full suite is never part of the deploy; it runs when the owner decides (audits, big refactors). Failing tests are tracked in per-session files.
-- **A backup that was never restored is not a backup.** Daily dumps on the server with a freshness marker, a copy on the owner's PC every two hours, a `git bundle` of the repository, and a restore check before handover. The PC side only trusts what it verified by checksum, and raises an alarm when the server stops producing fresh snapshots instead of reporting success on an old one.
-- **Humans deploy.** Sessions never push or deploy. `deploy.ps1` checks the tree, scans for secrets, migrates, restarts, waits for `/healthz` and rolls back by commit hash on failure.
-- **Every found class of mistake goes into a shared list** in `CLAUDE.md`, the same shift it was found.
+## Что внутри
 
-## What is inside
+| Файл | Зачем |
+|------|-------|
+| `CLAUDE.md` | Правила для сессий Claude Code. Читаются автоматически |
+| `docs/METHODOLOGY.md` | Методология целиком: сессии, тесты, бэкапы, деплой, сервер |
+| `docs/HANDOVER-TEMPLATE.md` | Шаблон файла передачи состояния для каждой сессии |
+| `docs/TESTS-FAILING-TEMPLATE.md` | Шаблон списка падающих тестов для каждой сессии |
+| `docs/KNOWN-GAPS.md` | Что проверено, что нет и как проверить каждый пункт |
+| `scripts/project.conf.example` | Все настройки проекта в одном файле |
+| `scripts/db-backup.sh` | Бэкап базы на сервере (cron) |
+| `scripts/dburl.py` | Разбор `DATABASE_URL`, в том числе пароля со знаком `%` |
+| `scripts/pull-backup.ps1` | Забирает свежий снимок базы на ПК: сверка SHA256, проверка свежести, чистка с полом |
+| `scripts/bundle-repos.ps1` | `git bundle` репозиториев с проверкой |
+| `scripts/lib-backup.ps1` | Общие функции PowerShell-скриптов (их проверяют тесты) |
+| `scripts/install-backup-task.ps1` | Ставит забор снимка и бандлы в планировщик Windows |
+| `scripts/deploy.ps1` | Каркас деплоя: выкатка, проверка, откат (тесты только с ключом `-WithTests`) |
+| `scripts/check_secrets.py` | Ищет токены и ключи перед коммитом |
+| `examples/` | Заполненные примеры HANDOVER и TESTS-FAILING |
+| `tests/` | Тесты скриптов набора (`pytest`) |
+| `.github/workflows/ci.yml` | CI: shellcheck, тесты, проверка PowerShell-скриптов |
+| `.gitignore` | Не пускает в репозиторий `.env`, дампы, сессии |
 
-| Path | Purpose |
-|------|---------|
-| `CLAUDE.md` | Rules read automatically by Claude Code in every session |
-| `docs/METHODOLOGY.md` | The full method (Russian) |
-| `docs/HANDOVER-TEMPLATE.md`, `docs/TESTS-FAILING-TEMPLATE.md` | Per-session templates |
-| `docs/KNOWN-GAPS.md` | What is verified, what is not, and how to check each item |
-| `examples/` | Filled-in examples for a fictional project |
-| `scripts/db-backup.sh` | PostgreSQL snapshots (`<stamp>/database.dump` + `OK`), rotation, readability check, marker file (server, cron) |
-| `scripts/dburl.py` | `DATABASE_URL` parser that survives a `%` in the password |
-| `scripts/pull-backup.ps1` | Pull the newest snapshot to a PC: one ssh call lists SHA256 sums, download to a staging dir, per-file verification, atomic move, retention with a minimum-copies floor, stale-snapshot alarm (exit code 2) |
-| `scripts/bundle-repos.ps1`, `install-backup-task.ps1`, `scripts/lib-backup.ps1` | Verified `git bundle` of repositories, Windows scheduled task, shared PowerShell functions |
-| `scripts/deploy.ps1` | Deploy with health check and rollback |
-| `scripts/check_secrets.py` | Secret and forbidden-file scan before commit and deploy |
-| `tests/` | Tests for the scripts; CI runs shellcheck, pytest, a secrets scan and a PowerShell syntax check |
+## Что проверено, а что нет
 
-## Quick start
+Скрипты прогнаны на поддельном сервере (поддельные `docker`, `ssh`, `scp`) и покрыты тестами. На настоящем сервере, в Windows PowerShell 5.1 и в планировщике Windows они ещё не запускались, `deploy.ps1` проверен только на синтаксис, восстановление базы из снимка не пробовалось. Полный список с проверкой для каждого пункта: `docs/KNOWN-GAPS.md`. Первый боевой запуск начинай с `-WhatIf`.
 
-1. Copy the contents into your project.
-2. Copy `scripts/project.conf.example` to `scripts/project.conf` and fill it in (it is git-ignored).
-3. Follow the steps in [README.ru.md](README.ru.md): server backup, PC backup, restore check.
+## Старт нового проекта
 
-## Status
+Слаг проекта (например `des-platform`) пишется латиницей и используется везде. Ниже он обозначен `<слаг>`, сервер `<сервер>`.
 
-The scripts are extracted from projects I run in production, then generalized. `dburl.py`, `check_secrets.py` and the PowerShell library have tests (mutation-checked), `db-backup.sh` is shellchecked in CI, the PowerShell scripts are syntax-checked there. The pull and backup scripts were also run end to end against a simulated server (fake `docker`, `ssh`, `scp`) covering success, re-run, corrupted copy, corrupted transfer, missing `OK`, stale snapshot, missing key. They have not run against a real server and Windows Task Scheduler yet: dry-run them on your own setup (`-WhatIf`) before you rely on them. The full list of what is and is not verified is in [docs/KNOWN-GAPS.md](docs/KNOWN-GAPS.md).
+### 1. Скопировать набор в проект (ПК, PowerShell)
 
-MIT licensed.
+```
+Copy-Item -Recurse -Force "<папка-набора>\*" "<папка-проекта>\"
+```
+
+Скрытый `.gitignore` копируется вместе с остальным. Если скопировался не он, скопируй его отдельно.
+
+### 2. Заполнить настройки
+
+```
+Copy-Item "<папка-проекта>\scripts\project.conf.example" "<папка-проекта>\scripts\project.conf"
+```
+
+```
+notepad "<папка-проекта>\scripts\project.conf"
+```
+
+Минимум: `PROJECT_SLUG`, `SERVER_HOST`, `SERVER_USER`, пути на сервере, `LOCAL_BACKUP_ROOT`, `LOCAL_REPOS`. Команды деплоя (`MIGRATE_CMD`, `VERSION_CMD`, `TEST_CMD`) подставь под свой стек, пустые шаги пропускаются. Файл `project.conf` в git не попадает.
+
+### 3. Подготовить зоны сессий
+
+Для каждой сессии (А, Б, В…) скопировать шаблоны и заполнить зону и суффикс тестовой БД. Как выглядит заполненный файл, смотри в `examples/`:
+
+```
+Copy-Item "<папка-проекта>\docs\HANDOVER-TEMPLATE.md" "<папка-проекта>\docs\HANDOVER-А.md"
+```
+
+```
+Copy-Item "<папка-проекта>\docs\TESTS-FAILING-TEMPLATE.md" "<папка-проекта>\docs\TESTS-FAILING-А.md"
+```
+
+Первая фраза каждой сессии: «Прочитай CLAUDE.md и свой HANDOVER-X.md».
+
+### 4. Бэкап базы на сервере
+
+Подключение:
+
+```
+ssh <пользователь>@<сервер>
+```
+
+Создать папки:
+
+```
+mkdir -p /srv/<слаг>/backup/db/daily /srv/<слаг>/backup/db/weekly /srv/<слаг>/state
+```
+
+Выйти (`exit`) и с ПК загрузить скрипт и настройки:
+
+```
+scp "<папка-проекта>\scripts\db-backup.sh" "<папка-проекта>\scripts\dburl.py" "<папка-проекта>\scripts\project.conf" <пользователь>@<сервер>:/opt/<слаг>/scripts/
+```
+
+Снова подключиться и запустить один раз вручную:
+
+```
+ssh <пользователь>@<сервер>
+```
+
+```
+bash /opt/<слаг>/scripts/db-backup.sh
+```
+
+Ждём последнюю строку: `готово: <снимок>, ... метка .../last-dump.json`. На сервере появится `db/daily/<время>/` с `database.dump` и `OK`. Если ошибка, в выводе будет её полный текст.
+
+Поставить в cron (03:30 по Москве = 00:30 UTC):
+
+```
+(crontab -l 2>/dev/null; echo "30 0 * * * bash /opt/<слаг>/scripts/db-backup.sh >> /var/log/<слаг>-db-backup.log 2>&1") | crontab -
+```
+
+### 5. Бэкап на ПК
+
+От администратора, один раз:
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File "<папка-проекта>\scripts\install-backup-task.ps1"
+```
+
+Проверить сразу:
+
+```
+Start-ScheduledTask -TaskName <слаг>-backup
+```
+
+```
+Get-ScheduledTaskInfo -TaskName <слаг>-backup
+```
+
+Результат: в `<LOCAL_BACKUP_ROOT>\<слаг>\` появятся папки `db` (снимки), `repo` (бандлы), `state` (метка `last-pull.json` и логи).
+
+Коды выхода забора: 0 снимок забран и свежий, 1 ошибка, 2 снимок забран, но старше `STALE_HOURS`: сервер перестал делать новые, проверь cron.
+
+План без действий: `powershell -NoProfile -File "<папка-проекта>\scripts\pull-backup.ps1" -WhatIf`
+
+### 6. Проверить, что бэкап разворачивается
+
+Без этого шага бэкап не считается бэкапом. Поднять временную базу:
+
+```
+docker run --rm -d --name pgtest -e POSTGRES_PASSWORD=test postgres:16
+```
+
+Положить дамп внутрь (подставь имя файла):
+
+```
+docker cp "<LOCAL_BACKUP_ROOT>\<слаг>\db\<снимок>\database.dump" pgtest:/tmp/t.dump
+```
+
+Развернуть:
+
+```
+docker exec pgtest pg_restore -U postgres -d postgres --no-owner /tmp/t.dump
+```
+
+Посмотреть, что таблицы на месте:
+
+```
+docker exec pgtest psql -U postgres -c "\dt *.*"
+```
+
+Убрать временную базу:
+
+```
+docker stop pgtest
+```
+
+Если база общая с другими данными, перед развёртыванием смотри раздел про схемы (`DB_SCHEMAS`) в `project.conf`.
+
+### 7. Проверить репозиторий на секреты
+
+```
+python scripts/check_secrets.py
+```
+
+Запускается перед каждым пушем. Деплой тоже его запускает.
+
+## Каждый день
+
+**Правило сессий.** Сессия работает в своей зоне, гоняет только свои тесты, коммитит через `git commit --only <пути>`, не пушит и не деплоит.
+
+**Деплой руками, по порядку:**
+
+1. `git status` (дерево чистое)
+2. `git log --oneline` (что уходит)
+3. дамп перед миграцией, если она есть
+4. `git push`
+5. `.\scripts\deploy.ps1`
+6. проверка версии миграций
+
+**После выкатки:** `/status` в боте или панели должен показывать свежий возраст бэкапа.
+
+## Если что-то пошло не так
+
+| Что видим | Что делаем |
+|-----------|------------|
+| `db-backup.sh`: «база недоступна» | В тексте ошибки psql после двоеточия причина. Проверить адрес в `DATABASE_URL` и доступ с сервера |
+| Забор вернул код 2, «снимок старый» | Сервер не делает новые снимки. На сервере: `ls /srv/<слаг>/backup/db/daily` и лог cron |
+| «нет отметки OK» при заборе | Снятие не дошло до конца. Запусти `db-backup.sh` вручную и смотри ошибку |
+| Дамп подозрительно маленький | Скрипт его не сохранит. Смотреть права пользователя БД и список схем в `DB_SCHEMAS` |
+| Кракозябры в выводе PowerShell | Файл `.ps1` пересохранён без BOM. Сохранить как UTF-8 with BOM |
+| `last-pull.json` не читается | Метка должна быть UTF-8 без BOM. `pull-backup.ps1` пишет её правильно, руками не редактировать |
+| Бэкап на ПК не обновляется | `Get-ScheduledTaskInfo -TaskName <слаг>-backup`, затем последний лог в `<LOCAL_BACKUP_ROOT>\<слаг>\state\logs\` |
+| `deploy.ps1` откатил версию | Версия на сервере возвращена. Причина в выводе: чаще всего healthz не ответил 200 |
+| Сессия не видит чужой код | Так и должно быть. Нужен общий интерфейс: обратиться к сессии А |
+
+## Что нужно доделать под проект
+
+- Пройти пункты из `docs/KNOWN-GAPS.md` на своей настройке и перенести проверенное в раздел «Проверено» с датой.
+- В `scripts/project.conf` указать `MIGRATE_CMD`, `VERSION_CMD` и, если нужен, `TEST_CMD` для запуска деплоя с `-WithTests`.
+- В `CLAUDE.md` дописать в «свод» ошибки, которые найдёт именно этот проект.
+- В `/status` бота или панели вывести возраст файлов `last-dump.json` и `last-pull.json` и тревогу при превышении порога.
+
+## Лицензия
+
+MIT, см. `LICENSE`.

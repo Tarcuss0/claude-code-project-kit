@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Поддельный ssh для tests/deploy.e2e.ps1: «сервер» это эта же машина.
+# Разбирает те же аргументы, что настоящий (-n, -o X, user@host, команда) и выполняет команду локально.
+# Все вызовы пишутся в $FAKE_LOG. Если команда совпадает с $FAKE_SSH_FAIL_MATCH, возвращает 255.
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -n) shift ;;
+        -o) shift 2 ;;
+        *) break ;;
+    esac
+done
+target=$1
+shift
+cmd="$*"
+echo "ssh $target :: $cmd" >> "${FAKE_LOG:-/dev/null}"
+if [ -n "${FAKE_SSH_FAIL_MATCH:-}" ] && [[ "$cmd" == *"$FAKE_SSH_FAIL_MATCH"* ]]; then
+    echo "ssh: connect to host failed" >&2
+    exit 255
+fi
+exec bash -c "$cmd"

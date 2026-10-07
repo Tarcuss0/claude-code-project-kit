@@ -1,1 +1,3 @@
+# Скрипты, которые исполняет Linux, всегда с LF: CRLF в строке #! ломает запуск
 *.sh text eol=lf
+tests/fakes/* text eol=lf

@@ -33,11 +33,34 @@ KEEP_AT_LEAST=3
 LOCAL_REPOS=C:\work\my-project
 KEEP_BUNDLES=14
 
-# --- Деплой ---
-SERVICE_NAME=my-project
-HEALTHZ_URL=http://127.0.0.1:8000/healthz
-# Команды выполняются на сервере в SERVER_APP_DIR. Пусто = шаг пропускается.
-MIGRATE_CMD=docker compose exec -T app alembic upgrade head
-VERSION_CMD=docker compose exec -T app alembic current
-# Команда полного прогона тестов на ПК. Запускается только с ключом -WithTests.
+# --- Деплой (подробно: docs/DEPLOY.md) ---
+# Что выкатывается и в каком порядке. Порядок важен: схема базы раньше кода, бэкенд раньше фронта.
+DEPLOY_ARTIFACTS=backend,frontend
+# Python для scripts/checks.py и scripts/deployed.py (на Windows обычно python или py)
+PYTHON_CMD=python
+# Дополнительная проверка перед выкаткой (необязательно). Не прошла: выкатка не начинается.
+#PRE_DEPLOY_CMD=npm run lint
+# Полный набор тестов. Запускается только с ключом -WithTests, в обычную выкатку не входит.
 TEST_CMD=pytest -q
+
+# На каждый артефакт свой набор ключей <имя>.<ключ>.
+# Пользователь ssh. Один артефакт, один пользователь: у каждого свои права на свой каталог.
+backend.SSH_USER=deploy
+# Каталог артефакта на сервере: внутри release.env, incoming/, releases/, current
+backend.REMOTE_DIR=/srv/my-project/backend
+# Серверный приёмник (server/release.sh, ставится на сервер один раз). Выкатка зовёт «<приёмник> --root <REMOTE_DIR> receive <архив>»
+backend.RELEASE_SCRIPT=/usr/local/bin/release-backend.sh
+# Адрес здоровья СНАРУЖИ (с ПК): по нему выкатка сверяет версию. Ответ: JSON с version.commit
+backend.HEALTH_URL=https://example.com/health
+# Сборка на ПК. Кладёт готовое в каталог $env:STAGE_DIR. Также доступны RELEASE_STAMP и DEPLOY_ARTIFACT
+backend.BUILD_CMD=python scripts/build_backend.py
+# Подкаталог внутри артефакта для version.json (если не корень)
+#backend.VERSION_DIR=app
+
+frontend.SSH_USER=deploy
+frontend.REMOTE_DIR=/srv/my-project/frontend
+frontend.RELEASE_SCRIPT=/usr/local/bin/release-frontend.sh
+frontend.HEALTH_URL=https://example.com/healthz
+frontend.BUILD_CMD=npm run build && Copy-Item -Recurse dist\* $env:STAGE_DIR
+# Если приём не «<RELEASE_SCRIPT> --root <REMOTE_DIR>», задай свою команду целиком:
+#frontend.RECEIVER=/usr/local/bin/release-frontend.sh --root /srv/my-project/frontend

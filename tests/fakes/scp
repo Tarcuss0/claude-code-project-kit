@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Поддельный scp для tests/deploy.e2e.ps1: копирует файл в путь после «user@host:».
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -o) shift 2 ;;
+        *) break ;;
+    esac
+done
+src=$1
+dst=${2#*:}
+echo "scp $src -> $dst" >> "${FAKE_LOG:-/dev/null}"
+cp "$src" "$dst"

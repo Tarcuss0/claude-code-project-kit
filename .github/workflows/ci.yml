@@ -15,12 +15,17 @@ jobs:
       - name: Install pytest
         run: pip install pytest
       - name: Shell script lint
-        run: shellcheck -S warning scripts/db-backup.sh
+        run: shellcheck -S warning scripts/db-backup.sh server/release.sh
       - name: Tests
         run: python -m pytest -q
       - name: PowerShell library tests
         shell: pwsh
-        run: ./tests/lib-backup.tests.ps1
+        run: |
+          ./tests/lib-backup.tests.ps1
+          ./tests/lib-deploy.tests.ps1
+      - name: Deploy end to end (simulated server)
+        shell: pwsh
+        run: ./tests/deploy.e2e.ps1
       - name: Secrets scan of this repository
         run: python scripts/check_secrets.py
 

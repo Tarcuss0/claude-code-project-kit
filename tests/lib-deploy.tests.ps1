@@ -225,3 +225,5 @@ finally {
 
 Write-Host "прошло: $script:passed, упало: $script:failures"
 if ($script:failures -gt 0) { exit 1 }
+# Явный код выхода: в CI шаг pwsh берёт $LASTEXITCODE последней внешней команды, а она могла быть ненулевой.
+exit 0

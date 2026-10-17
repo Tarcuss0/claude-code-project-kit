@@ -21,6 +21,8 @@ Russian is the main language of this repository. Full instructions and the metho
 | `CLAUDE.md` | Rules read automatically by Claude Code in every session |
 | `docs/METHODOLOGY.md` | The full method (Russian) |
 | `docs/HANDOVER-TEMPLATE.md`, `docs/TESTS-FAILING-TEMPLATE.md` | Per-session templates |
+| `docs/ARCHITECTURE-TEMPLATE.md`, `docs/ADR-TEMPLATE.md` | Architecture map (stack, context, containers, data, states in Mermaid) and decision record templates, so project knowledge lives in the repo and not in a session |
+| `docs/SECURITY.md` | Server, secrets, deploy and session security checklist built from a real incident, plus incident response (Russian) |
 | `docs/KNOWN-GAPS.md` | What is verified, what is not, and how to check each item |
 | `examples/` | Filled-in examples for a fictional project |
 | `scripts/db-backup.sh` | PostgreSQL snapshots (`<stamp>/database.dump` + `OK`), rotation, readability check, marker file (server, cron) |
@@ -28,7 +30,7 @@ Russian is the main language of this repository. Full instructions and the metho
 | `scripts/pull-backup.ps1` | Pull the newest snapshot to a PC: one ssh call lists SHA256 sums, download to a staging dir, per-file verification, atomic move, retention with a minimum-copies floor, stale-snapshot alarm (exit code 2) |
 | `scripts/bundle-repos.ps1`, `install-backup-task.ps1`, `scripts/lib-backup.ps1` | Verified `git bundle` of repositories, Windows scheduled task, shared PowerShell functions |
 | `scripts/deploy.ps1`, `scripts/lib-deploy.ps1`, `scripts/version-stamp.ps1` | Artifact-based deploy: tree checks, build, upload, receive, version check against the server, marker, manual rollback, `-WhatIf`, `-MarkOnly` |
-| `scripts/checks.py`, `scripts/guards/` | Runs the secrets scan and every project guard (`guards/*.py`) in one go; `_template.py` documents the contract |
+| `scripts/checks.py`, `scripts/guards/` | Runs the secrets scan and every project guard (`guards/*.py`) in one go; `_template.py` documents the contract; `20-docs-sync.py` blocks a deploy when migrations or dependency manifests changed since the last release but `docs/ARCHITECTURE.md` did not (escape hatch: an `Архитектура: без изменений` line in a commit body) |
 | `scripts/deployed.py` | What is on production now and which commits have not gone out, from `deploy/deployed.json` |
 | `server/release.sh`, `server/release.env.example` | Server-side receiver: release directories, atomic symlink switch, restart, health wait, automatic rollback, pruning |
 | `docs/DEPLOY.md` | Deploy order, additive-migration rule, health convention (`/healthz` liveness, `/health` with DB check), first-time server setup, rollback (Russian) |
@@ -45,4 +47,4 @@ Russian is the main language of this repository. Full instructions and the metho
 
 The scripts are extracted from projects I run in production, then generalized. `dburl.py`, `check_secrets.py` and the PowerShell library have tests (mutation-checked), `db-backup.sh` is shellchecked in CI, the PowerShell scripts are syntax-checked there. The pull and backup scripts were also run end to end against a simulated server (fake `docker`, `ssh`, `scp`) covering success, re-run, corrupted copy, corrupted transfer, missing `OK`, stale snapshot, missing key. The deploy was run end to end the same way (fake `ssh`/`scp`, real `release.sh`, git, tar and curl): happy path with two artifacts, `-WhatIf`, dirty tree, unpushed tree, red guard, build failure, upload failure, a second artifact that fails its health check and is rolled back by the server, manual rollback, `-MarkOnly`; the test is mutation-checked. None of it has run against a real server, Windows PowerShell 5.1 or Windows Task Scheduler yet: dry-run them on your own setup (`-WhatIf`) before you rely on them. The full list of what is and is not verified is in [docs/KNOWN-GAPS.md](docs/KNOWN-GAPS.md).
 
-MIT licensed.
+Licensed under CC BY-NC-SA 4.0: free to use, modify and share with attribution, except for commercial use. For a commercial license, contact Telegram @tarcuss.

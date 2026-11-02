@@ -35,6 +35,9 @@ Russian is the main language of this repository. Full instructions and the metho
 | `server/release.sh`, `server/release.env.example` | Server-side receiver: release directories, atomic symlink switch, restart, health wait, automatic rollback, pruning |
 | `docs/DEPLOY.md` | Deploy order, additive-migration rule, health convention (`/healthz` liveness, `/health` with DB check), first-time server setup, rollback (Russian) |
 | `scripts/check_secrets.py` | Secret and forbidden-file scan before commit and deploy |
+| `scripts/outcome.py` | One parser of pytest outcomes for every session: green, failed, did not take place (setup error, skip, xfail, xpass), did not reach the tests. Reads per-test `-rA` lines and cross-checks them against the pytest summary; refuses instead of guessing. Has a probe mode for mutation checks |
+| `scripts/commit.py` | Commit your own paths when several sessions share one working tree: `git commit --only`, zone check, retry on a race, composition check after the commit |
+| `docs/PROD-CLEANUP.md`, `docs/PROD-CLEANUP-TEMPLATE.sql` | Removing trial data from a production database: one transaction with name, row-count and dangling-reference guards, tombstones instead of deleting file rows; the template is tested against PostgreSQL 16 |
 | `tests/` | Tests for the scripts; CI runs shellcheck, pytest, PowerShell unit tests, an end-to-end deploy run against a simulated server, a secrets scan and a PowerShell syntax check |
 
 ## Quick start

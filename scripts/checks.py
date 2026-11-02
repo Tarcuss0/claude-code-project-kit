@@ -15,9 +15,21 @@ guards/ и сам оказывается на пути выкатки. Форм�
 Проверкам, которым нужен поднятый стенд или долгая сборка, место в ручном прогоне
 перед выкаткой, а не здесь.
 
+Три исхода сторожа, а не два. Сторож, который не смог измерить (нет базы, нет
+маркера выкатки, нет нужного файла), не имеет права сказать «ок»: его молчание
+неотличимо от зелёного, и мимо него месяцами едет то, что он стережёт.
+  код 0  мера прошла;
+  код 3  мера не состоялась, причина в строке «НЕ СОСТОЯЛАСЬ: ...»;
+  иначе  мера не прошла, причина в строках «ПЛОХО ...» или «ОТКАЗ ...».
+
+Код выхода самого checks.py: 0 все прошли, 1 хотя бы один не прошёл (выкатка стоит),
+3 никто не провалился, но часть не состоялась: выкатка идёт, а несостоявшиеся
+перечислены отдельной строкой и итог зелёным не называется.
+
 Запуск:
     python scripts/checks.py
-    python scripts/checks.py --quick     без сторожей с пометкой «# needs-db»
+    python scripts/checks.py --quick     сторожа с пометкой «# needs-db» не запускаются
+                                         и числятся несостоявшимися
 """
 import subprocess
 import sys
@@ -27,6 +39,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 GUARDS = ROOT / "scripts" / "guards"
 HEADER_LINES = 15
+NOT_HELD = 3
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -86,6 +99,7 @@ def blamed_lines(out: str) -> list:
     blamed = [
         line for line in out.splitlines()
         if "ПЛОХО" in line or line.startswith("ОТКАЗ") or "Traceback" in line
+        or line.startswith("НЕ СОСТОЯЛАСЬ")
     ]
     return (blamed or out.strip().splitlines()[-12:])[:12]
 
@@ -93,6 +107,7 @@ def blamed_lines(out: str) -> list:
 def main() -> int:
     quick = "--quick" in sys.argv
     failed = []
+    not_held = []
     checks = discover()
     if not checks:
         print("Сторожей нет: ни check_secrets.py, ни файлов в scripts/guards/.")
@@ -101,11 +116,18 @@ def main() -> int:
     for path, about, needs_db, cwd in checks:
         name = path.name
         if quick and needs_db:
-            print(f"  пропуск  {name:<32} нужна база, а сказано --quick")
+            not_held.append(name)
+            print(f"  НЕ СОСТ. {name:<32}           нужна база, а сказано --quick")
             continue
         code, out, spent = run(path, cwd)
         if code == 0:
             print(f"  ок       {name:<32} {spent:5.1f} с   {about}")
+            continue
+        if code == NOT_HELD:
+            not_held.append(name)
+            print(f"  НЕ СОСТ. {name:<32} {spent:5.1f} с   {about}")
+            for line in blamed_lines(out):
+                print("           " + line.strip())
             continue
         failed.append(name)
         print(f"  ПЛОХО    {name:<32} {spent:5.1f} с   {about}")
@@ -115,8 +137,14 @@ def main() -> int:
     print()
     if failed:
         print(f"Не прошли: {', '.join(failed)}.")
+        if not_held:
+            print(f"Не состоялись: {', '.join(not_held)}.")
         print("Выкатка остановлена, разбор выше.")
         return 1
+    if not_held:
+        print(f"Не состоялись: {', '.join(not_held)}. Это не зелёный: эти сторожа сегодня ничего не сказали.")
+        print(f"Прошли остальные ({len(checks) - len(not_held)} из {len(checks)}).")
+        return NOT_HELD
     print("Сторожа дерева прошли.")
     return 0
 

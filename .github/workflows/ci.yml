@@ -17,7 +17,9 @@ jobs:
       - name: Shell script lint
         run: shellcheck -S warning scripts/db-backup.sh server/release.sh
       - name: Tests
-        run: python -m pytest -q
+        # Исход называет outcome.py: пропуск или ошибка установки (например, нет Postgres
+        # для tests/test_prod_cleanup.py) дают «НЕ СОСТОЯЛАСЬ» и красный шаг, а не тихий зелёный.
+        run: python scripts/outcome.py run -- -q
       - name: PowerShell library tests
         shell: pwsh
         run: |

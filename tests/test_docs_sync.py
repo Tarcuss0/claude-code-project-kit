@@ -54,10 +54,12 @@ def repo(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def test_no_marker_is_skipped_with_a_note(repo):
+def test_no_marker_is_not_held_not_ok(repo):
+    # молчание по причине окружения не зелёный: код 3 и отдельная строка
     code, out = run_guard(repo)
-    assert code == 0
-    assert "выкаток" in out
+    assert code == 3
+    assert out.startswith("НЕ СОСТОЯЛАСЬ") and "выкаток" in out
+    assert "ок" not in out.split()
 
 
 def test_unrelated_change_passes(repo):

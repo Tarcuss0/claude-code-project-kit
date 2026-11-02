@@ -75,8 +75,27 @@ def test_quick_skips_needs_db_guards(tree):
     full = run(tree)
     assert full.returncode == 1
     quick = run(tree, "--quick")
-    assert quick.returncode == 0
-    assert "пропуск" in quick.stdout and "10-db.py" in quick.stdout
+    assert quick.returncode == 3, quick.stdout
+    assert "НЕ СОСТ." in quick.stdout and "10-db.py" in quick.stdout
+    assert "Сторожа дерева прошли" not in quick.stdout
+
+
+def test_not_held_guard_is_reported_separately_and_not_green(tree):
+    guard(tree, "10-a.py", "print('ok')\n")
+    guard(tree, "20-nodb.py", "print('НЕ СОСТОЯЛАСЬ: базы нет')\nraise SystemExit(3)\n", "# about: сверка с базой\n")
+    got = run(tree)
+    assert got.returncode == 3, got.stdout
+    assert "НЕ СОСТ." in got.stdout and "НЕ СОСТОЯЛАСЬ: базы нет" in got.stdout
+    assert "Не состоялись: 20-nodb.py" in got.stdout
+    assert "Сторожа дерева прошли" not in got.stdout
+
+
+def test_failure_wins_over_not_held(tree):
+    guard(tree, "10-bad.py", "print('ПЛОХО: x')\nraise SystemExit(1)\n")
+    guard(tree, "20-nodb.py", "print('НЕ СОСТОЯЛАСЬ: базы нет')\nraise SystemExit(3)\n")
+    got = run(tree)
+    assert got.returncode == 1
+    assert "Не прошли: 10-bad.py" in got.stdout and "Не состоялись: 20-nodb.py" in got.stdout
 
 
 def test_guards_run_in_filename_order(tree):

@@ -160,6 +160,17 @@ try {
     Assert-Match $r.Text 'ПЛОХО: лежит STOP' '5: причина названа'
     Invoke-Git rm -q STOP; Invoke-Git commit -q -m 'убрали STOP'; Invoke-Git push -q
 
+    # ================================================================ 5б. сторож не смог измерить (код 3)
+    # Молчание по причине окружения не зелёный: выкатку не держит, но «прошли» не печатается.
+    Set-Content (Join-Path $repo 'scripts/guards/20-nodb.py') -Value @('# about: сверка с базой', 'print("НЕ СОСТОЯЛАСЬ: базы нет, сверять не с чем")', 'raise SystemExit(3)')
+    Invoke-Git add -A; Invoke-Git commit -q -m 'сторож без базы'; Invoke-Git push -q
+    $r = Invoke-Deploy @('-WhatIf')
+    Assert-Equal $r.Code 0 '5б: несостоявшийся сторож выкатку не держит'
+    Assert-Match $r.Text 'часть НЕ СОСТОЯЛАСЬ' '5б: несостоявшийся сторож назван отдельно'
+    Assert-Match $r.Text 'базы нет, сверять не с чем' '5б: причина напечатана'
+    Assert-True (-not ($r.Text -match 'сторожа дерева прошли')) '5б: итог не называется зелёным'
+    Invoke-Git rm -q 'scripts/guards/20-nodb.py'; Invoke-Git commit -q -m 'убрали сторож без базы'; Invoke-Git push -q
+
     # ================================================================ 6. сборка упала
     $env:E2E_FAIL_BUILD = '1'
     $beforeB = ReleaseCount 'backend'

@@ -161,7 +161,12 @@ function Invoke-PreChecks {
     if (Test-Path -LiteralPath $checks) {
         Push-Location $ROOT
         try { & $python $checks | Out-Host } finally { Pop-Location }
-        if ($LASTEXITCODE -ne 0) {
+        $checksCode = $LASTEXITCODE
+        if ($checksCode -eq 3) {
+            # Код 3: никто не провалился, но часть сторожей не смогла измерить. Это не зелёный,
+            # и так и печатается; выкатку не держит, несостоявшиеся названы в выводе выше.
+            Write-Host '  сторожа: часть НЕ СОСТОЯЛАСЬ (названы выше), это не зелёный' -ForegroundColor Yellow
+        } elseif ($checksCode -ne 0) {
             if ($Force) { Write-Host 'Сторожа дерева не прошли, но задан -Force: выкатываем как есть.' -ForegroundColor Yellow }
             else { $problems += 'сторожа дерева не прошли (разбор выше, python scripts\checks.py)' }
         } else { Write-Host '  сторожа дерева прошли' -ForegroundColor Green }

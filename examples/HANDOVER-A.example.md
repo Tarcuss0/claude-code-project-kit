@@ -7,6 +7,7 @@
 - Владеет: `app/core/`, `app/core/public.py`, миграции `alembic/versions/core_*`
 - Чужие зоны: `app/billing/` (сессия Б), `app/notify/` (сессия В)
 - Суффикс тестовой БД: `_a`
+- Комплект (контейнеры, стенд, порты), только свой: `docker compose -p invoice_a`, стенд `a.test.invoice.local`, порты 8110–8119
 - Команда тестов зоны: `pytest -q tests/core tests/test_boundaries.py`
 
 ## Состояние

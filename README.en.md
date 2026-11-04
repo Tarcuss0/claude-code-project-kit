@@ -37,6 +37,9 @@ Russian is the main language of this repository. Full instructions and the metho
 | `scripts/check_secrets.py` | Secret and forbidden-file scan before commit and deploy |
 | `scripts/outcome.py` | One parser of pytest outcomes for every session: green, failed, did not take place (setup error, skip, xfail, xpass), did not reach the tests. Reads per-test `-rA` lines and cross-checks them against the pytest summary; refuses instead of guessing. Has a probe mode for mutation checks |
 | `scripts/commit.py` | Commit your own paths when several sessions share one working tree: `git commit --only`, zone check, retry on a race, composition check after the commit |
+| `scripts/run-lock.py` | Lock a shared test kit for the duration of one command: held by the OS, released when the process dies, names the holder when busy |
+| `scripts/stand-mark.py` | Fence a measurement on a shared stand with a unique build mark read over HTTP before and after: wrong mark means not started, changed mark means the measurement did not take place |
+| `scripts/guards/30-session-kits.py` | Every session's handover file names its own test-DB suffix and its own kit, with no duplicates |
 | `docs/PROD-CLEANUP.md`, `docs/PROD-CLEANUP-TEMPLATE.sql` | Removing trial data from a production database: one transaction with name, row-count and dangling-reference guards, tombstones instead of deleting file rows; the template is tested against PostgreSQL 16 |
 | `tests/` | Tests for the scripts; CI runs shellcheck, pytest, PowerShell unit tests, an end-to-end deploy run against a simulated server, a secrets scan and a PowerShell syntax check |
 
